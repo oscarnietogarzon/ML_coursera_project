@@ -161,6 +161,7 @@ model. The obtained OOB estimate of error is very small, therefore this
 random forest model will make good predictions with new data.
 
 ![](course_project_ML_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
 With this evidence it is clear that the model that was obtained with
 random forests has more accuracy and makes better predictions. So, this
 model is used to predict the final 20 cases with the test dataset.

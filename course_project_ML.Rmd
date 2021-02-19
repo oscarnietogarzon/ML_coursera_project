@@ -2,9 +2,7 @@
 title: "Course Project Practical Machine Learning"
 author: "Oscar Nieto"
 date: "02/19/2021"
-output: 
-  html_document:
-    keep_md: true
+output: rmarkdown::github_document
 fontsize: 14pt
 ---
 This report contains the procedure and the results requested for the course project of the Practical Machine Learning class. This is part of the Coursera specialization in Data Science offered by Johns Hopkins University.
@@ -129,6 +127,7 @@ Also the change of the out of sample error of the random forest model can be vis
 ```{r, echo=FALSE}
 plot(fit_rf$err.rate[,1], type = "l", main = "OOB estimate of error rate", ylab = "Error",xlab="Trees")
 ```
+
 With this evidence it is clear that the model that was obtained with random forests has more accuracy and makes better predictions. So, this model is used to predict the final 20 cases with the test dataset.
 
 # Final prediction
