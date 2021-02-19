@@ -2,7 +2,9 @@
 title: "Course Project Practical Machine Learning"
 author: "Oscar Nieto"
 date: "02/19/2021"
-output: html_document
+output: 
+  html_document:
+    keep_md: true
 fontsize: 14pt
 ---
 This report contains the procedure and the results requested for the course project of the Practical Machine Learning class. This is part of the Coursera specialization in Data Science offered by Johns Hopkins University.
