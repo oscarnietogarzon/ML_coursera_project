@@ -1,0 +1,139 @@
+---
+title: "Course Project Practical Machine Learning"
+author: "Oscar Nieto"
+date: "02/19/2021"
+output: html_document
+fontsize: 14pt
+---
+This report contains the procedure and the results requested for the course project of the Practical Machine Learning class. This is part of the Coursera specialization in Data Science offered by Johns Hopkins University.
+
+# Executive summary
+
+The goal of this project is to present a model that is capable of predicting the manner in which the subjects realized the exercise, predicting the quality of execution _("clasee" variable)_, with the data provided by the measurements devices.
+
+# Selection of the variables and data partition
+
+Once the two datasets (train and test) are loaded in R and the corresponding seed is defined, the train data is split in two parts, one to apply the create the models *(70% of the data)* and the other to validate them. 
+
+```{r include=FALSE,  eval=FALSE}
+pks <- c("ElemStatLearn","caret","gbm", "lubridate", "forecast","tidyverse","randomForest","plot.matrix") #load packages
+lapply(pks, require, character.only = TRUE)
+
+set.seed(12345)
+UrlTrain <- c("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+UrlTest <- c("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+#Download the files
+download.file(UrlTrain, destfile = "/Users/oscarnietogarzon/Desktop/R Projects/ML_coursera_project/TrainHAR.csv")
+download.file(UrlTest, destfile = "/Users/oscarnietogarzon/Desktop/R Projects/ML_coursera_project/TestHAR.csv")
+#Load the files
+TrainHAR <- read.csv("./TrainHAR.csv")
+TestHAR <- read.csv("./TestHAR.csv")
+TrainHAR$classe<-as.factor(TrainHAR$classe) #convert classe into factor variable
+
+#data split
+createDataPartition(TrainHAR$classe, p=0.7, list=FALSE) -> inCV
+
+TrainHAR[inCV, ] -> trainCV
+subset(trainCV, select = c("classe","roll_belt", "accel_belt_x",  "accel_belt_y" ,
+  "accel_belt_z", "gyros_belt_x","gyros_belt_y","gyros_belt_z" ,
+  "magnet_belt_x", "magnet_belt_y", "magnet_belt_z" ,
+  "accel_arm_x","accel_arm_y", "accel_arm_z",
+  "magnet_arm_x","magnet_arm_y","magnet_arm_z",
+  "accel_dumbbell_x","accel_dumbbell_y","accel_dumbbell_z","magnet_dumbbell_x", "magnet_dumbbell_y","magnet_dumbbell_z",
+  "gyros_dumbbell_x" ,"gyros_dumbbell_y","gyros_dumbbell_z",
+  "pitch_forearm", "gyros_forearm_x" ,"gyros_forearm_y" , "gyros_forearm_z" ) ) -> trainCV
+
+TrainHAR[-inCV, ] -> valCV
+subset(valCV, select = c("classe","roll_belt", "accel_belt_x",  "accel_belt_y" ,
+                           "accel_belt_z", "gyros_belt_x","gyros_belt_y","gyros_belt_z" ,
+                           "magnet_belt_x", "magnet_belt_y", "magnet_belt_z" ,
+                           "accel_arm_x","accel_arm_y", "accel_arm_z",
+                           "magnet_arm_x","magnet_arm_y","magnet_arm_z",
+                           "accel_dumbbell_x","accel_dumbbell_y","accel_dumbbell_z","magnet_dumbbell_x", "magnet_dumbbell_y","magnet_dumbbell_z",
+                           "gyros_dumbbell_x" ,"gyros_dumbbell_y","gyros_dumbbell_z",
+                           "pitch_forearm", "gyros_forearm_x" ,"gyros_forearm_y" , "gyros_forearm_z" ) )-> valCV
+
+```
+
+Then the predicting variables that are the best to predict the outcome are selected. These variables correspond to the features described by Velloso et al. (2013), where they found that features of roll, accelerometer and magnetometer in the belt and the arm, the gyro and the pitch in the forearm. 
+
+```{r}
+load(file = "projectData.RData")
+colnames(trainCV)
+```
+
+With these variables two models are proposed and compared to evaluate which have the best performance _(Accuracy)_ with the train data. The model that described the highest accuracy was used to the final predictions.
+
+# Fitted models and performance
+
+The two tested models are based in random forests and the generalized boosted regression with trees (gbm). Each of the tested models have an approach that requires *resampling (Bootstrap)*, for these reason there is no need to execute and external cross validation of the models. However, to compare them a proper validation with the independent train data is required.
+
+```{r eval=FALSE}
+#random forest
+randomForest(classe~., data=trainCV, ntree=100) -> fit_rf
+#boosting with trees (gbm)
+train(classe~., data=trainCV, method="gbm", verbose=FALSE) -> fit_gbm
+```
+
+With the two models, it is important to see the relative importance of all of the predictors within each model. 
+
+```{r message=FALSE}
+pks <- c("caret","gbm","randomForest") #load packages
+lapply(pks, require, character.only = TRUE)
+
+load(file = "projectData.RData")
+varImpPlot(fit_rf, main="Random Forest varImp")
+varImp(fit_gbm)
+```
+
+It can be seen that the *roll belt, the magnetometer and the acceleration of the dumbbell and the pitch forearm* are the most relevant predictors. Also these models were compared with the obtained accuracy of the prediction with the validation data, that was partitioned before.
+
+```{r, eval=FALSE}
+predict(fit_rf, newdata=valCV) -> pred_rf
+predict(fit_gbm, newdata=valCV) -> pred_gbm
+```
+
+```{r, echo=FALSE}
+rbind( c("Random Forest", "Boosting with trees"),
+cbind(confusionMatrix(pred_rf, valCV$classe)$overall['Accuracy'],
+  confusionMatrix(pred_gbm, valCV$classe)$overall['Accuracy']))
+```
+
+Also it is possible to generate a series of normalized confusion matrix to visualize the performance of each model.
+
+```{r, echo=FALSE, fig.width=7, fig.height=12}
+library(plot.matrix)
+table(pred_rf, valCV$classe) #Random Forest
+table(pred_gbm, valCV$classe) #GBM
+
+par(mfrow=c(2,1))
+#plot rf
+prop.table(table(pred_rf, valCV$classe), 2) -> rfmatrix  #normalized matrix
+matrix(rfmatrix, ncol=5) -> rfmatrix
+colnames(rfmatrix) <- c("A","B","C","D","E"); rownames(rfmatrix) <- c("A","B","C","D","E")
+plot(rfmatrix,digits=4, cex=0.75, xlab ='Prediction', ylab='Observed', axis.row=list(side=2, las=1),
+     main="Random Forest")
+#plot gbm
+prop.table(table(pred_gbm, valCV$classe), 2) -> rfmatrix2  #normalized matrix
+matrix(rfmatrix2, ncol=5) -> rfmatrix2
+colnames(rfmatrix2) <- c("A","B","C","D","E"); rownames(rfmatrix2) <- c("A","B","C","D","E")
+plot(rfmatrix2, digits=4, cex=0.75, xlab ='Prediction', ylab='Observed', axis.row=list(side=2, las=1),
+     main= "Boosting with trees")
+
+```
+
+Also the change of the out of sample error of the random forest model can be visualized with respect of the number of trees used to fit the model. The obtained OOB estimate of error is very small, therefore this random forest model will make good predictions with new data.
+
+```{r, echo=FALSE}
+plot(fit_rf$err.rate[,1], type = "l", main = "OOB estimate of error rate", ylab = "Error",xlab="Trees")
+```
+With this evidence it is clear that the model that was obtained with random forests has more accuracy and makes better predictions. So, this model is used to predict the final 20 cases with the test dataset.
+
+# Final prediction
+
+With the random forest and the test dataset the final 20 cases were predicted.
+
+```{r}
+predict(fit_rf, newdata=TestHAR)
+```
+
